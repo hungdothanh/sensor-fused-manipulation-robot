@@ -2,17 +2,26 @@
 
 A full-stack robotic manipulation system that combines **LiDAR–camera sensor fusion**, **open-vocabulary visual perception** (Grounding DINO), and **LLM-driven natural language control** to autonomously sort objects on a tabletop using a UR5 arm — all running in ROS 2 / Gazebo simulation.
 
+![ROS2](https://img.shields.io/badge/ROS_2-Humble-blue?logo=ros)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
+![MoveIt2](https://img.shields.io/badge/MoveIt_2-motion_planning-orange)
+![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-darkgreen)
+![GroundingDINO](https://img.shields.io/badge/Grounding_DINO-VLM-purple)
+![LiDAR](https://img.shields.io/badge/LiDAR--Camera-Sensor_Fusion-red)
+![LLM](https://img.shields.io/badge/LLM-GPT--4o_|_Ollama-green?logo=openai)
+![RANSAC](https://img.shields.io/badge/RANSAC-Circle_Fitting-yellow)
+
 ---
 
 ## Demo
 
-> **GUI · Chat Interface · Live Perception**
+> **Gazebo Simulation Environment — UR5 Tabletop Scene**
 
-![GUI](docs/gui.png)
+![Gazebo Setup](assets/gazebo-setup.png)
 
-> **Robot Running · Wrist Cam · Fusion Insight**
+> **Robot Control Interface — Chat · Wrist Cam · Fusion Insight · 3D Centroid Analysis**
 
-![Robot Running](docs/robot_running.png)
+![Robot Control Interface](assets/robot-control-interface.png)
 
 ---
 

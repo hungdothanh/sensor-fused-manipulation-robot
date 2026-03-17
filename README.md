@@ -21,7 +21,7 @@ A full-stack robotic manipulation system that combines **LiDAR–camera sensor f
 
 > **Robot Control Interface — Chat · Wrist Cam · Fusion Insight · 3D Centroid Analysis**
 
-![Robot Control Interface](assets/robot-control.png)
+![Robot Control Interface](assets/robot-control-interface.png)
 
 ---
 

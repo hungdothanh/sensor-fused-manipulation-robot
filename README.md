@@ -1,6 +1,6 @@
 # Sensor-Fused 3D Perception for LLM-Driven Pick-and-Place Robot
 
-A full-stack robotic manipulation system that combines **LiDAR–camera sensor fusion**, **open-vocabulary visual perception** (Grounding DINO), and **LLM-driven natural language control** to autonomously sort objects on a tabletop using a UR5 arm — all running in ROS 2 / Gazebo simulation.
+A full-stack robotic manipulation system that combines **LiDAR–camera sensor fusion**, **open-vocabulary visual perception** (Grounding DINO), and **LLM-driven natural language control** to autonomously sort objects on a tabletop using a UR5 arm - all running in ROS 2 / Gazebo simulation.
 
 ![ROS2](https://img.shields.io/badge/ROS_2-Humble-blue?logo=ros)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
@@ -21,7 +21,7 @@ A full-stack robotic manipulation system that combines **LiDAR–camera sensor f
 
 > **Robot Control Interface — Chat · Wrist Cam · Fusion Insight · 3D Centroid Analysis**
 
-![Robot Control Interface](assets/robot-control-interface.png)
+
 
 ---
 

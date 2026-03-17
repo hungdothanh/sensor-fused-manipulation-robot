@@ -2,6 +2,9 @@
 
 A full-stack robotic manipulation system that combines **LiDAR–camera sensor fusion**, **open-vocabulary visual perception** (Grounding DINO), and **LLM-driven natural language control** to autonomously sort objects on a tabletop using a UR5 arm - all running in ROS 2 / Gazebo simulation.
 
+
+<div align="center">
+
 ![ROS2](https://img.shields.io/badge/ROS_2-Humble-blue?logo=ros)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![MoveIt2](https://img.shields.io/badge/MoveIt_2-motion_planning-orange)
@@ -10,6 +13,8 @@ A full-stack robotic manipulation system that combines **LiDAR–camera sensor f
 ![LiDAR](https://img.shields.io/badge/LiDAR--Camera-Sensor_Fusion-red)
 ![LLM](https://img.shields.io/badge/LLM-GPT--4o_|_Ollama-green?logo=openai)
 ![RANSAC](https://img.shields.io/badge/RANSAC-Circle_Fitting-yellow)
+
+</div>
 
 ---
 

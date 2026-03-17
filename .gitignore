@@ -1,0 +1,15 @@
+# ROS 2 workspace generated directories
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# VSCode
+.vscode/
+
+# Environment
+.env

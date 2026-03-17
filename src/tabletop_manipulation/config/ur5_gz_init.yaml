@@ -1,0 +1,26 @@
+# ur5_gz_init.yaml
+# ─────────────────
+# Passed to gz_ros2_control via <parameters> in the URDF.
+#
+# MUST contain controller type declarations so controller_manager
+# knows the type before the spawner calls load_controller.
+# The spawner --param-file then adds the joint-level parameters
+# (joints list, interfaces, constraints etc).
+#
+# gz_ros2_control reads this file and registers the types as ROS
+# parameters on controller_manager — it does NOT pre-load controllers.
+# Pre-loading only happens if the spawner is called or if
+# gz_ros2_control is explicitly configured to auto-spawn.
+
+controller_manager:
+  ros__parameters:
+    update_rate: 250
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    joint_trajectory_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    gripper_action_controller:
+      type: position_controllers/GripperActionController

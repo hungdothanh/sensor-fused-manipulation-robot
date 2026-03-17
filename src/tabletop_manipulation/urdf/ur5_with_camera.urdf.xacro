@@ -1,0 +1,405 @@
+<?xml version="1.0"?>
+<!--
+  ur5_with_camera.urdf.xacro  (FIXED v6)
+  ========================================
+  THE FIX: add <robot_param_node> to the plugin so gz_ros2_control
+  reads the URDF from our dedicated "robot_desc_provider" node
+  instead of robot_state_publisher.
+
+  robot_state_publisher is in a separate process; gz_ros2_control's
+  internal rclcpp node (created inside Gazebo's thread, after
+  rclcpp::init() already ran) cannot discover it via DDS in Humble.
+
+  Our robot_desc_provider node is launched BEFORE Gazebo and has no
+  use_sim_time dependency, so its parameter service is immediately
+  discoverable.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur5_with_camera">
+
+  <xacro:include filename="$(find ur_description)/urdf/ur_macro.xacro"/>
+  <xacro:include filename="$(find robotiq_description)/urdf/ur_to_robotiq_adapter.urdf.xacro"/>
+  <xacro:include filename="$(find robotiq_description)/urdf/robotiq_2f_85_macro.urdf.xacro"/>
+
+  <link name="world"/>
+
+  <!--
+    Robot spawn pose: x=1.35 (far short edge of table), y=0, z=0.765 (table surface),
+    yaw=π so the arm faces world -X = toward the table objects.
+    Putting the pose here in the URDF means robot_state_publisher will publish
+    world→base_link at the correct position. A separate static_transform_publisher
+    for world→base would conflict, so we handle it entirely through this joint.
+  -->
+  <xacro:ur_robot
+    name="ur5"
+    tf_prefix=""
+    parent="world"
+    joint_limits_parameters_file="$(find ur_description)/config/ur5/joint_limits.yaml"
+    kinematics_parameters_file="$(find ur_description)/config/ur5/default_kinematics.yaml"
+    physical_parameters_file="$(find ur_description)/config/ur5/physical_parameters.yaml"
+    visual_parameters_file="$(find ur_description)/config/ur5/visual_parameters.yaml"
+    generate_ros2_control_tag="false"
+    use_fake_hardware="false"
+    fake_sensor_commands="false"
+    sim_gazebo="false">
+    <origin xyz="1.35 0 0.765" rpy="0 0 3.14159"/>
+  </xacro:ur_robot>
+
+  <!-- ── ros2_control hardware block ──────────────────────────────────── -->
+  <ros2_control name="ur5_gz_hardware" type="system">
+    <hardware>
+      <!-- Verified class name from  strings libign_ros2_control-system.so -->
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+
+    <joint name="shoulder_pan_joint">
+      <command_interface name="position">
+        <param name="min">-6.2832</param><param name="max">6.2832</param>
+      </command_interface>
+      <!-- 3.1416 = pi: arm faces +X toward the table objects.
+           0.0 aimed the arm in -X (away from table) in UR5 DH convention. -->
+      <state_interface name="position"><param name="initial_value">0.0000</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="shoulder_lift_joint">
+      <command_interface name="position">
+        <param name="min">-6.2832</param><param name="max">6.2832</param>
+      </command_interface>
+      <!-- -pi/2: upper arm points straight up from base -->
+      <state_interface name="position"><param name="initial_value">-1.5708</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="elbow_joint">
+      <command_interface name="position">
+        <param name="min">-3.1416</param><param name="max">3.1416</param>
+      </command_interface>
+      <!-- 75° (1.3090 rad): forearm leans inward over table, not fully horizontal -->
+      <state_interface name="position"><param name="initial_value">1.0090</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="wrist_1_joint">
+      <command_interface name="position">
+        <param name="min">-6.2832</param><param name="max">6.2832</param>
+      </command_interface>
+      <!-- -pi/2: tucks wrist so tool0 Z points straight down -->
+      <state_interface name="position"><param name="initial_value">-1.2708</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="wrist_2_joint">
+      <command_interface name="position">
+        <param name="min">-6.2832</param><param name="max">6.2832</param>
+      </command_interface>
+      <state_interface name="position"><param name="initial_value">4.7124</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="wrist_3_joint">
+      <command_interface name="position">
+        <param name="min">-6.2832</param><param name="max">6.2832</param>
+      </command_interface>
+      <state_interface name="position"><param name="initial_value">0.0000</param></state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- ── Ignition Gazebo plugin ────────────────────────────────────────── -->
+  <gazebo>
+    <plugin filename="ign_ros2_control-system"
+            name="ign_ros2_control::IgnitionROS2ControlPlugin">
+      <!--
+        parameters tag points to a MINIMAL yaml (update_rate only).
+        gz_ros2_control REQUIRES a non-empty parameters file to initialise,
+        but if controller types are declared here it pre-loads them in a
+        broken half-initialised state ("Controller already loaded / Failed
+        to configure" at spawner time).
+        Solution: init yaml has ONLY update_rate.
+        Spawners use param-file with the full controllers yaml.
+      -->
+      <parameters>$(find tabletop_manipulation)/config/ur5_gz_init.yaml</parameters>
+      <robot_param>robot_description</robot_param>
+      <robot_param_node>robot_desc_provider</robot_param_node>
+    </plugin>
+  </gazebo>
+
+  <!-- ── Camera mount ──────────────────────────────────────────────────── -->
+  <joint name="camera_mount_joint" type="fixed">
+    <parent link="tool0"/>
+    <child  link="camera_mount"/>
+    <!--
+      tool0 Z points UP in this arm pose.
+      xyz="0 0 -0.12": 12 cm below tool0 – close to the arm, just past the wrist_3 mesh.
+
+      Orientation reasoning (rpy = R_z(yaw) × R_y(pitch) × R_x(roll)):
+        rpy="0 1.5708 1.5708" → R = R_z(π/2) × R_y(π/2)
+        camera_mount +X = world -Z (DOWN)  ← sensor still looks at table ✓
+        camera_mount +Y = tool0 -X dir    ← 99 mm face now runs along arm reach axis
+        Effect: the long wide face of the box is visible from the typical side view
+                (a flat horizontal bar), not just a thin 25×20 mm edge.
+    -->
+    <origin xyz="0 -0.07 -0.03" rpy="0 -1.5708 1.5708"/>
+  </joint>
+  <link name="camera_mount">
+    <!--
+      Sized to match Intel RealSense D435:
+        X = 0.020 m (20 mm body depth  – camera_mount +X faces DOWN = lens direction)
+        Y = 0.099 m (99 mm width       – the 4-lens bar runs along this axis)
+        Z = 0.025 m (25 mm body height)
+    -->
+    <visual>
+      <geometry><box size="0.020 0.099 0.025"/></geometry>
+      <material name="dark_grey"><color rgba="0.15 0.15 0.15 1"/></material>
+    </visual>
+
+    <!--
+      Mounting bracket: thin arm from camera body back-top to tool0 flange.
+      In camera_mount frame, tool0 is at (-0.030, 0, 0.070).
+      The strut runs from the camera top-back corner (-0.010, 0, +0.010)
+      to tool0 (-0.030, 0, +0.070) — length ≈ 63 mm at ~18° from vertical.
+    -->
+    <visual>
+      <!-- left bracket strut -->
+      <origin xyz="0.000 -0.022 -0.010" rpy="0 0 0"/>
+      <geometry><box size="0.008 0.006 0.063"/></geometry>
+      <material name="bracket_grey"><color rgba="0.50 0.50 0.50 1"/></material>
+    </visual>
+    <visual>
+      <!-- right bracket strut -->
+      <origin xyz="0.000 0.022 -0.010" rpy="0 0 0"/>
+      <geometry><box size="0.008 0.006 0.063"/></geometry>
+      <material name="bracket_grey"><color rgba="0.50 0.50 0.50 1"/></material>
+    </visual>
+
+    <collision><geometry><box size="0.020 0.099 0.025"/></geometry></collision>
+    <inertial>
+      <mass value="0.072"/>
+      <inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <joint name="camera_color_joint" type="fixed">
+    <parent link="camera_mount"/>
+    <child  link="camera_color_optical_frame"/>
+    <origin xyz="0.01 0 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+  <link name="camera_color_optical_frame"/>
+
+  <joint name="camera_depth_joint" type="fixed">
+    <parent link="camera_mount"/>
+    <child  link="camera_depth_optical_frame"/>
+    <origin xyz="0.01 -0.015 0" rpy="-1.5708 0 -1.5708"/>
+  </joint>
+  <link name="camera_depth_optical_frame"/>
+
+  <!-- ── Wrist-mounted LiDAR ──────────────────────────────────────────── -->
+  <!--
+    Extrinsic calibration: lidar_mount is a fixed child of camera_mount.
+
+    Translation xyz="0 0.065 0":
+      65 mm along camera_mount +Y — places the LiDAR unit just past the
+      right edge of the D435 body (which is 99 mm wide, ±49.5 mm in Y).
+      Keeping the same orientation means both sensors look in the same
+      direction (camera_mount +X = toward the scene).
+
+    Rotation rpy="0 0 0":
+      Identity — LiDAR beam axis is parallel to camera optical axis.
+      This is the "zero" extrinsic we calibrate from in real hardware.
+
+    In real hardware you would measure this offset with a ruler (rough) then
+    refine it using a checkerboard or sphere target visible to both sensors.
+    In simulation the transform is exact by construction, so robot_state_
+    publisher publishes the precise world→lidar_mount at every timestep via
+    the full kinematic chain:
+      world → base_link → ... → tool0 → camera_mount → lidar_mount
+  -->
+  <joint name="lidar_mount_joint" type="fixed">
+    <parent link="camera_mount"/>
+    <child  link="lidar_mount"/>
+    <!--
+      Placed directly above the RGBD camera body in camera_mount +Z.
+      Camera body half-height = 0.0125 m, LiDAR half-length = 0.010 m, 3 mm gap → 0.026 m.
+    -->
+    <origin xyz="0 0 0.026" rpy="0 0 0"/>
+  </joint>
+  <link name="lidar_mount">
+    <!--
+      Visual: small disc representing a solid-state LiDAR unit (e.g. Livox Mid-70).
+      Cylinder axis stays along camera_mount Z (no rotation needed) — the flat
+      circular face points upward toward the arm body (+Z) and downward toward
+      the camera body (-Z).
+        radius = 0.030 m (30 mm)
+        length = 0.020 m (20 mm)
+    -->
+    <visual>
+      <geometry><cylinder radius="0.030" length="0.020"/></geometry>
+      <material name="lidar_black"><color rgba="0.05 0.05 0.05 1"/></material>
+    </visual>
+    <collision>
+      <geometry><cylinder radius="0.030" length="0.020"/></geometry>
+    </collision>
+    <inertial>
+      <mass value="0.130"/>
+      <inertia ixx="2e-5" iyy="2e-5" izz="2e-5" ixy="0" ixz="0" iyz="0"/>
+    </inertial>
+  </link>
+
+  <!-- ── Sensors ───────────────────────────────────────────────────────── -->
+  <!--
+    IMPORTANT: In Ignition Fortress, a "camera" sensor publishes ONLY the
+    image. camera_info is published automatically at <topic>/camera_info,
+    i.e. /camera/color/image_raw/camera_info — NOT at /camera/color/camera_info.
+    We use an "rgbd_camera" sensor instead, which publishes:
+      rgb image     → /camera/color/image_raw
+      depth image   → /camera/depth/image_rect_raw
+      point cloud   → /camera/depth/points
+      camera_info   → /camera/color/camera_info   (explicit tag below)
+    This matches exactly what the ros_gz_bridge expects.
+  -->
+  <gazebo reference="camera_mount">
+    <sensor name="rgbd_camera" type="rgbd_camera">
+      <always_on>1</always_on>
+      <update_rate>15</update_rate>
+      <visualize>false</visualize>
+      <topic>/camera/color/image_raw</topic>
+      <camera name="rgbd">
+        <horizontal_fov>1.2</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.1</near>
+          <far>8.0</far>
+        </clip>
+      </camera>
+    </sensor>
+  </gazebo>
+  <!-- ── Wrist LiDAR sensor ───────────────────────────────────────────── -->
+  <!--
+    gpu_lidar attached to lidar_mount (child of camera_mount).
+
+    Firing direction:
+      lidar_mount +X  =  camera_mount +X  =  toward the scene (downward in
+      the typical overhead-pick pose).  Rays therefore sweep across the top
+      faces of cylinders, producing a circular arc in the world XY plane —
+      ideal for RANSAC circle fitting.
+
+    Angular coverage (360° horizontal, ±30° vertical):
+      Full 360° horizontal sweep ensures cylinders are hit regardless of
+      the arm's wrist rotation.  ±30° vertical covers objects 0.25–0.9 m
+      from the sensor at typical approach heights.
+
+    Topic naming (Ignition Fortress convention):
+      gpu_lidar publishes LaserScan        → /lidar/scan
+                          PointCloudPacked → /lidar/scan/points    ← we use this
+      ros_gz_bridge maps /lidar/scan/points → sensor_msgs/PointCloud2
+  -->
+  <gazebo reference="lidar_mount">
+    <sensor name="lidar" type="gpu_lidar">
+      <topic>/lidar/scan</topic>
+      <ray>
+        <scan>
+          <!--
+            720 horizontal rays over 360°.
+            At 0.5 m range this gives ~4 mm point spacing — enough to hit
+            a 60 mm diameter cylinder with ~48 points per ring.
+          -->
+          <horizontal>
+            <samples>720</samples>
+            <resolution>1</resolution>
+            <min_angle>-3.1416</min_angle>
+            <max_angle>3.1416</max_angle>
+          </horizontal>
+          <!--
+            32 vertical channels, ±30° (0.5236 rad).
+            At a 0.5 m range the channel spacing is ~1 cm, so the 10 cm
+            cylinder height is covered by ~10 channels.
+          -->
+          <vertical>
+            <samples>32</samples>
+            <resolution>1</resolution>
+            <min_angle>-0.5236</min_angle>
+            <max_angle>0.5236</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.05</min>
+          <max>5.0</max>
+          <resolution>0.002</resolution>
+        </range>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.003</stddev>
+        </noise>
+      </ray>
+      <always_on>true</always_on>
+      <update_rate>10</update_rate>
+      <visualize>true</visualize>
+    </sensor>
+  </gazebo>
+
+  <!-- ── Camera appearance: RealSense D435 texture ───────────────────────── -->
+  <!--
+    Ignition Fortress (ogre2) PBR material applied to the camera_mount visual.
+    $(find tabletop_manipulation) expands at xacro time to the installed share path;
+    the file:// URI lets Ignition load the texture from the filesystem.
+    The albedo_map is the rgb-d.png image (Intel RealSense D435 front face)
+    which will be UV-wrapped across all six faces of the box geometry.
+  -->
+  <gazebo reference="camera_mount">
+    <visual>
+      <material>
+        <ambient>1 1 1 1</ambient>
+        <diffuse>1 1 1 1</diffuse>
+        <specular>0.3 0.3 0.3 1</specular>
+        <pbr>
+          <metal>
+            <albedo_map>file://$(find tabletop_manipulation)/materials/textures/rgb-d.png</albedo_map>
+            <metalness>0.4</metalness>
+            <roughness>0.5</roughness>
+          </metal>
+        </pbr>
+      </material>
+    </visual>
+  </gazebo>
+
+  <!-- ── Robotiq 2F-85 Gripper ─────────────────────────────────────────── -->
+  <!--
+    Attach the Robotiq 2F-85 to the UR5 tool flange via the standard
+    UR-to-Robotiq coupling adapter (adds an 11 mm standoff mesh).
+    sim_ignition=true  → ign_ros2_control/IgnitionSystem hardware plugin
+    include_ros2_control=true  → adds a <ros2_control> block for the gripper
+  -->
+  <xacro:ur_to_robotiq prefix="" parent="tool0" child="robotiq_mount"/>
+
+  <xacro:robotiq_gripper
+      name="RobotiqGripper"
+      prefix=""
+      parent="robotiq_mount"
+      sim_ignition="true"
+      include_ros2_control="true">
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </xacro:robotiq_gripper>
+
+  <!-- ── Ignition Gazebo DetachableJoint Plugin ────────────────────────── -->
+  <!--
+    Provides reliable programmatic object attachment for simulation.
+    parent_link must be a real SDF link (survives URDF fixed-joint reduction).
+    wrist_3_link is always present after sdformat importer reduction.
+
+    Three-topic API (confirmed from plugin binary strings):
+      <attach_topic>  → receives Empty to create the joint
+      <detach_topic>  → receives Empty to destroy the joint
+      <topic>         → deprecated detach alias; must equal <detach_topic>
+  -->
+  <gazebo>
+    <plugin filename="ignition-gazebo-detachable-joint-system" name="ignition::gazebo::systems::DetachableJoint">
+      <parent_link>wrist_3_link</parent_link>
+      <child_model>__any__</child_model>
+      <child_link>__any__</child_link>
+      <topic>/gripper/suction_off</topic>
+      <detach_topic>/gripper/suction_off</detach_topic>
+      <attach_topic>/gripper/suction_on</attach_topic>
+    </plugin>
+  </gazebo>
+
+</robot>

@@ -1,0 +1,316 @@
+<?xml version="1.0" ?>
+<!--
+  tabletop.sdf  CONVEYOR v2
+  ==========================
+  Industrial pick-and-place conveyor scene.
+
+  Coordinate system (world frame, Z up):
+    Robot arm base:  world (1.35, 0, 0.765) — mounted on a standalone pedestal
+    Conveyor table:  world (0.70, -0.09, 0.74),  top surface z=0.765
+      X range: [0.40, 1.00]  (0.60 m deep  — thinner, conveyor-like)
+      Y range: [-0.70, 0.52] (1.22 m long  — right side extended +2 cm from 0.50)
+
+    Left  box (Y- side, visually left):  model origin (0.80, -0.55, 0.765)
+    Right box (Y+ side, visually right): model origin (0.80, +0.38, 0.765)
+    Box inner dims: 0.22 × 0.22 m, wall height 0.10 m
+
+    Cylinders on conveyor (r=0.03, h=0.10, centre z=0.815):
+      Red:   (0.65,  0.20, 0.815)
+      Green: (0.75, -0.25, 0.815)
+      <!--Blue:  (0.85,  0.05, 0.815)-->
+-->
+<sdf version="1.8">
+  <world name="tabletop_world">
+
+    <physics name="250hz" type="ignored">
+      <max_step_size>0.004</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="ignition-gazebo-physics-system"
+            name="ignition::gazebo::systems::Physics"/>
+    <plugin filename="ignition-gazebo-user-commands-system"
+            name="ignition::gazebo::systems::UserCommands"/>
+    <plugin filename="ignition-gazebo-scene-broadcaster-system"
+            name="ignition::gazebo::systems::SceneBroadcaster"/>
+    <plugin filename="ignition-gazebo-sensors-system"
+            name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="ignition-gazebo-contact-system"
+            name="ignition::gazebo::systems::Contact"/>
+
+    <!-- Lighting -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>1.0 1.0 1.0 1</diffuse>
+      <specular>0.4 0.4 0.4 1</specular>
+      <direction>-0.3 0.1 -0.9</direction>
+    </light>
+    <light type="directional" name="fill">
+      <pose>2 1 5 0 0 0</pose>
+      <diffuse>0.7 0.7 0.8 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+      <direction>0.4 -0.2 -0.9</direction>
+    </light>
+
+    <!-- ── Ground plane ─────────────────────────────────────────────────── -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="c">
+          <geometry><plane><normal>0 0 1</normal></plane></geometry>
+        </collision>
+        <visual name="v">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material>
+            <ambient>0.4 0.4 0.4 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ── ROBOT PEDESTAL ────────────────────────────────────────────────── -->
+    <!--
+      Standalone column supporting the arm base at world z=0.765.
+      Column: 0.25×0.25×0.765 m, centre at (1.35, 0, 0.3825).
+      Base plate: 0.60×0.60×0.04 m, centre at (1.35, 0, 0.02).
+    -->
+    <model name="robot_pedestal">
+      <static>true</static>
+      <pose>1.35 0 0 0 0 0</pose>
+
+      <link name="base_plate">
+        <pose>0 0 0.02 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.60 0.60 0.04</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.60 0.60 0.04</size></box></geometry>
+          <material>
+            <ambient>0.25 0.25 0.30 1</ambient>
+            <diffuse>0.30 0.30 0.35 1</diffuse>
+            <specular>0.15 0.15 0.15 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <link name="column">
+        <pose>0 0 0.4025 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.25 0.25 0.725</size></box></geometry></collision>
+        <visual name="v">
+          <geometry><box><size>0.25 0.25 0.725</size></box></geometry>
+          <material>
+            <ambient>0.30 0.30 0.35 1</ambient>
+            <diffuse>0.35 0.35 0.40 1</diffuse>
+            <specular>0.20 0.20 0.20 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ── CONVEYOR TABLE ────────────────────────────────────────────────── -->
+    <!--
+      Model origin at world (0.70, -0.09, 0.74).
+      Table top: 0.60 × 1.22 × 0.05 m → top surface at world z=0.765.
+      X world range: [0.40, 1.00]   (0.60 m deep — narrow conveyor profile)
+      Y world range: [-0.70, +0.52] (1.22 m long — right side +2 cm from previous)
+    -->
+    <model name="conveyor_table">
+      <static>true</static>
+      <pose>0.70 -0.09 0.74 0 0 0</pose>
+
+      <link name="table_top">
+        <collision name="c">
+          <geometry><box><size>0.60 1.22 0.05</size></box></geometry>
+        </collision>
+        <visual name="v">
+          <geometry><box><size>0.60 1.22 0.05</size></box></geometry>
+          <material>
+            <ambient>0.45 0.45 0.50 1</ambient>
+            <diffuse>0.50 0.50 0.55 1</diffuse>
+            <specular>0.10 0.10 0.10 1</specular>
+          </material>
+        </visual>
+      </link>
+
+      <!-- Four corner legs — positions updated for new 0.60×1.22 top, centre Y=-0.09 -->
+      <link name="leg_fl"><pose> 0.26  0.56 -0.38 0 0 0</pose>
+        <collision name="c"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry></collision>
+        <visual name="v"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+      </link>
+      <link name="leg_fr"><pose> 0.26 -0.56 -0.38 0 0 0</pose>
+        <collision name="c"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry></collision>
+        <visual name="v"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+      </link>
+      <link name="leg_bl"><pose>-0.26  0.56 -0.38 0 0 0</pose>
+        <collision name="c"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry></collision>
+        <visual name="v"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+      </link>
+      <link name="leg_br"><pose>-0.26 -0.56 -0.38 0 0 0</pose>
+        <collision name="c"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry></collision>
+        <visual name="v"><geometry><cylinder><radius>0.025</radius><length>0.72</length></cylinder></geometry>
+          <material><ambient>0.3 0.3 0.3 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ── LEFT BOX CONTAINER (Y- side, visually left) ───────────────────── -->
+    <!--
+      Model origin at world (0.80, -0.55, 0.765).
+      Arm reach to box centre: sqrt(0.55² + 0.55²) = 0.78 m  (UR5 max 0.85 m ✓)
+      Inner cavity: 0.22×0.22 m.  Wall thickness: 0.025 m.  Wall height: 0.10 m.
+    -->
+    <model name="left_box">
+      <static>true</static>
+      <pose>0.80 -0.55 0.765 0 0 0</pose>
+
+      <link name="wall_back">
+        <pose>0.1225 0 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.025 0.27 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.025 0.27 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_front">
+        <pose>-0.1225 0 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.025 0.27 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.025 0.27 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_left">
+        <pose>0 0.1225 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.22 0.025 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.22 0.025 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_right">
+        <pose>0 -0.1225 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.22 0.025 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.22 0.025 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ── RIGHT BOX CONTAINER (Y+ side, visually right) ────────────────── -->
+    <model name="right_box">
+      <static>true</static>
+      <pose>0.80 0.38 0.765 0 0 0</pose>
+
+      <link name="wall_back">
+        <pose>0.1225 0 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.025 0.27 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.025 0.27 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_front">
+        <pose>-0.1225 0 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.025 0.27 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.025 0.27 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_left">
+        <pose>0 0.1225 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.22 0.025 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.22 0.025 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+      <link name="wall_right">
+        <pose>0 -0.1225 0.05 0 0 0</pose>
+        <collision name="c"><geometry><box><size>0.22 0.025 0.10</size></box></geometry></collision>
+        <visual name="v"><geometry><box><size>0.22 0.025 0.10</size></box></geometry>
+          <material><ambient>0.45 0.45 0.50 1</ambient><diffuse>0.50 0.50 0.55 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <!-- ── CYLINDERS ON CONVEYOR ─────────────────────────────────────────── -->
+    <!-- All: r=0.03 m, h=0.10 m → centre z = 0.765 + 0.05 = 0.815 m        -->
+    <!-- Scattered across the table, shifted further from the scene camera.   -->
+
+    <!-- Red Cylinder -->
+    <model name="red_cylinder">
+      <static>false</static>
+      <pose>0.65 0.10 0.815 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.1</mass>
+          <inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0001</izz>
+                   <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="c">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+        </collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.85 0.10 0.10 1</ambient><diffuse>0.85 0.10 0.10 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Green Cylinder -->
+    <model name="green_cylinder">
+      <static>false</static>
+      <pose>0.75 -0.25 0.815 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.1</mass>
+          <inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0001</izz>
+                   <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="c">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+        </collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.10 0.80 0.10 1</ambient><diffuse>0.10 0.80 0.10 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Blue Cylinder (disabled)
+    <model name="blue_cylinder">
+      <static>false</static>
+      <pose>0.57 -0.10 0.815 0 0 0</pose>
+      <link name="link">
+        <inertial><mass>0.1</mass>
+          <inertia><ixx>0.0001</ixx><iyy>0.0001</iyy><izz>0.0001</izz>
+                   <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+        </inertial>
+        <collision name="c">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+        </collision>
+        <visual name="v">
+          <geometry><cylinder><radius>0.03</radius><length>0.10</length></cylinder></geometry>
+          <material><ambient>0.10 0.10 0.85 1</ambient><diffuse>0.10 0.10 0.85 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    -->
+
+    <!-- ── Scene overview camera ──────────────────────────────────────── -->
+    <!-- Positioned in front of the scene (negative X), centred in Y,     -->
+    <!-- looking straight along +X toward the robot arm.                  -->
+    <!-- Pulled back slightly to X=-0.45 to frame the wider 1.40 m table. -->
+    <model name="scene_camera_stand">
+      <static>true</static>
+      <pose>-0.45 -0.10 1.45 0 0.45 0</pose>
+      <link name="camera_link">
+        <sensor name="scene_camera" type="camera">
+          <topic>/scene_camera/image_raw</topic>
+          <camera name="scene">
+            <horizontal_fov>1.35</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip><near>0.1</near><far>12.0</far></clip>
+          </camera>
+          <always_on>true</always_on>
+          <update_rate>10</update_rate>
+          <visualize>false</visualize>
+        </sensor>
+      </link>
+    </model>
+
+  </world>
+</sdf>
